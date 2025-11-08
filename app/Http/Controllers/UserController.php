@@ -140,39 +140,45 @@ public function edit($id)
         }
     }
 
-    public function login(Request $request)
-    {
-        $request->validate([
-            'email' => 'required|email',
-            'mot_de_passe' => 'required|string',
-        ]);
+   public function login(Request $request)
+{
+    $request->validate([
+        'email' => 'required|email',
+        'password' => 'required|string',
+        'role' => 'required|string',
+    ]);
 
-        try {
-            $user = User::where('email', $request->email)->first();
+    try {
+        // Tentative de connexion avec Auth::attempt
+        $credentials = $request->only(['email', 'password']);
 
-            if (!$user || !Hash::check($request->mot_de_passe, $user->password)) {
-                return response()->json([
-                    'status_code' => 401,
-                    'status_message' => 'Email ou mot de passe incorrect.'
-                ], 401);
+        if (Auth::attempt($credentials)) {
+            // Vérification du rôle après connexion
+            $user = Auth::user();
+            if ($user->role === $request->role) {
+                // Redirection selon le rôle
+                switch($user->role) {
+                    case 'admin':
+                        return redirect('/administration/dashboard');
+                    case 'etudiant':
+                        return redirect('/etudiant/dashboard');
+                    case 'comptable':
+                        return redirect('/comptable/dashboard');
+                    default:
+                        return redirect('/dashboard');
+                }
+            } else {
+                Auth::logout();
+                return back()->with('error', 'Rôle incorrect.');
             }
-
-            $token = $user->createToken('auth_token')->plainTextToken;
-
-            return response()->json([
-                'status_code' => 200,
-                'status_message' => 'Connexion réussie',
-                'data' => $user,
-                'token' => $token
-            ], 200);
-        } catch (Exception $e) {
-            return response()->json([
-                'status_code' => 500,
-                'status_message' => 'Erreur lors de la connexion',
-                'error' => $e->getMessage()
-            ], 500);
         }
+
+        return back()->with('error', 'Email ou mot de passe incorrect.');
+
+    } catch (Exception $e) {
+        return back()->with('error', 'Erreur lors de la connexion: ' . $e->getMessage());
     }
+}
 
     public function logout(Request $request)
     {

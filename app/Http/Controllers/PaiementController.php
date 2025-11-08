@@ -62,7 +62,7 @@ class PaiementController extends Controller
             'inscription.classe',
             'comptable.personne'
         ])
-        ->where('statut', 'en attente')
+        ->where('statut', 'en_attente')
         ->get();
 
         return view('comptable.paiements.valider', compact('paiements'));
@@ -130,7 +130,7 @@ class PaiementController extends Controller
         try {
             $paiement->load('inscription.etudiant.personne.user');
 
-            $paiement->update(['statut' => 'validé']);
+            $paiement->update(['statut' => 'valide']);
 
             return response()->json([
                 'message' => 'Paiement validé avec succès',
@@ -572,20 +572,20 @@ public function callbackOrangeMoney(Request $request)
 
         return [
             'revenus_totaux' => $paiements->where('statut', 'validé')->sum('montant'),
-            'nombre_paiements_valides' => $paiements->where('statut', 'validé')->count(),
+            'nombre_paiements_valides' => $paiements->where('statut', 'valide')->count(),
             'nombre_paiements_attente' => $paiements->where('statut', 'en_attente')->count(),
-            'nombre_paiements_rejetes' => $paiements->where('statut', 'rejeté')->count(),
+            'nombre_paiements_rejetes' => $paiements->where('statut', 'rejete')->count(),
             'taux_validation' => $paiements->count() > 0 ?
-                round(($paiements->where('statut', 'validé')->count() / $paiements->count()) * 100, 2) : 0,
-            'revenus_moyens_etudiant' => $paiements->where('statut', 'validé')->count() > 0 ?
-                round($paiements->where('statut', 'validé')->sum('montant') / $paiements->where('statut', 'validé')->unique('inscription.etudiant_id')->count()) : 0
+                round(($paiements->where('statut', 'valide')->count() / $paiements->count()) * 100, 2) : 0,
+            'revenus_moyens_etudiant' => $paiements->where('statut', 'valide')->count() > 0 ?
+                round($paiements->where('statut', 'valide')->sum('montant') / $paiements->where('statut', 'valide')->unique('inscription.etudiant_id')->count()) : 0
         ];
     }
 
     private function getAnalyseTypeFrais($periode, $annee, $mois)
     {
         $query = Paiement::with('inscription.classe')
-                         ->where('statut', 'validé');
+                         ->where('statut', 'valide');
 
         // Même filtrage par période
         switch ($periode) {
@@ -682,7 +682,7 @@ public function callbackOrangeMoney(Request $request)
 
     private function getAnalyseModePaiement($periode, $annee, $mois)
     {
-        $query = Paiement::where('statut', 'validé');
+        $query = Paiement::where('statut', 'valide');
 
         // Même filtrage par période
         switch ($periode) {
@@ -725,7 +725,7 @@ public function callbackOrangeMoney(Request $request)
 
         for ($i = 11; $i >= 0; $i--) {
             $date = now()->subMonths($i);
-            $revenus = Paiement::where('statut', 'validé')
+            $revenus = Paiement::where('statut', 'valide')
                               ->whereYear('date_paiement', $date->year)
                               ->whereMonth('date_paiement', $date->month)
                               ->sum('montant');

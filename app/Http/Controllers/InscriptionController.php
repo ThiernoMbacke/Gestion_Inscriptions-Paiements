@@ -9,7 +9,7 @@ use App\Models\Etudiant;
 use Illuminate\Http\Request;
 use App\Traits\GenerateApiResponse;
 use Exception;
-use App\Mail\PaiementInscriptionMail;
+use App\Mail\InscriptionValideeMail;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;  // ← Ajoutez cette ligne
@@ -83,9 +83,9 @@ class InscriptionController extends Controller
             // Initialisation de la variable statistiques avec des valeurs par défaut
             $statistiques = [
                 'total' => 0,
-                'valide' => 0,
+                'validee' => 0,
                 'en_attente' => 0,
-                'rejeté' => 0,
+                'rejetee' => 0,
                 'taux_validation' => 0,
                 'evolution' => 0,
             ];
@@ -100,11 +100,11 @@ class InscriptionController extends Controller
 
                 $statistiques = [
                     'total' => $totalInscriptions,
-                    'valide' => $statuts->get('valide', 0),
+                    'validee' => $statuts->get('validee', 0),
                     'en_attente' => $statuts->get('en_attente', 0),
-                    'rejeté' => $statuts->get('rejeté', 0),
+                    'rejetee' => $statuts->get('rejetee', 0),
                     'taux_validation' => $totalInscriptions > 0 ?
-                        round(($statuts->get('valide', 0) / $totalInscriptions) * 100) : 0,
+                        round(($statuts->get('validee', 0) / $totalInscriptions) * 100) : 0,
                     'evolution' => 0,
                 ];
 
@@ -158,11 +158,11 @@ $administration = $user->administration;
                 'classe_id' => 'required|exists:classes,id',
                 'annee_academique' => 'required|regex:/^\d{4}-\d{4}$/',
                 'date_inscription' => 'required|date',
-                'statut' => 'required|in:en_attente,valide,rejeté',
+                'statut' => 'required|in:en_attente,validee,rejetee',
             ]);
 
             // Vérifier si le statut change à 'valide' ou 'rejeté' et enregistrer l'administrateur
-            if (($validated['statut'] === 'valide' || $validated['statut'] === 'rejeté') && !$inscription->administration_id) {
+            if (($validated['statut'] === 'validee' || $validated['statut'] === 'rejetee') && !$inscription->administration_id) {
                 $validated['administration_id'] = auth('admin')->id();
             }
 
@@ -170,7 +170,7 @@ $administration = $user->administration;
             $inscription->update($validated);
 
             // Si le statut est validé, on peut déclencher des actions supplémentaires ici
-            if ($validated['statut'] === 'valide') {
+            if ($validated['statut'] === 'validee') {
                 // Par exemple, envoyer un email de confirmation
                 // Mail::to($inscription->etudiant->personne->email)->send(new InscriptionValideeMail($inscription));
             }
@@ -221,34 +221,46 @@ $administration = $user->administration;
     }
 
     public function validateInscription(Inscription $inscription)
-    {
-        if ($inscription->statut !== 'en_attente') {
-            return redirect()->route('admin.inscriptions.index')
-                ->with('error', 'Cette inscription ne peut pas être validée.');
-        }
-
-        $user = Auth::user();
-/**      @var User $user */
-        $administration = $user->administration;
-        if (!$administration) {
-            return redirect()->back()->with('error', 'Impossible de récupérer l’administration de l’utilisateur connecté.');
-        }
-
-        $inscription->statut = 'valide';
-        $inscription->administration_id = $administration->id;
-        $inscription->save();
-
-        try {
-            Mail::to($inscription->etudiant->personne->email)
-                ->send(new PaiementInscriptionMail($inscription));
-        } catch (\Exception $e) {
-            return redirect()->back()->with('error', 'Inscription validée mais email non envoyé : ' . $e->getMessage());
-        }
-
+{
+    // Garder votre logique de validation originale
+    if ($inscription->statut !== 'en_attente') {
         return redirect()->route('admin.inscriptions.index')
-            ->with('success', 'Inscription validée et email envoyé à l’étudiant.');
+            ->with('error', 'Cette inscription ne peut pas être validée.');
     }
 
+    $user = Auth::user();
+    /** @var User $user */
+    $administration = $user->administration;
+    if (!$administration) {
+        return redirect()->back()->with('error', 'Impossible de récupérer l\'administration de l\'utilisateur connecté.');
+    }
+
+    // Mise à jour (garder votre méthode originale)
+    $inscription->statut = 'validee';
+    $inscription->administration_id = $administration->id;
+    $inscription->save();
+
+    // ✅ COPIER EXACTEMENT LA LOGIQUE EMAIL DES PAIEMENTS
+    $inscription->load('etudiant.personne.user'); // Charger les relations comme dans paiements
+    $etudiantUser = $inscription->etudiant?->personne?->user;
+
+    $emailSent = false;
+    try {
+        if ($etudiantUser && $etudiantUser->email) {
+            Mail::to($etudiantUser->email)->send(new InscriptionValideeMail($inscription));
+            $emailSent = true;
+        }
+    } catch (Exception $emailException) {
+        // Log l'erreur mais continue (comme pour les paiements)
+        Log::error('Erreur envoi email validation inscription: ' . $emailException->getMessage());
+        $emailSent = false;
+    }
+
+    return redirect()->route('admin.inscriptions.index')
+        ->with('success', 'Inscription validée avec succès.' .
+               ($emailSent ? ' Email envoyé à l\'étudiant.' :
+                ' (Erreur envoi email - vérifier configuration SMTP)'));
+}
     public function rejectInscription(Inscription $inscription)
     {
         if ($inscription->statut !== 'en_attente') {
@@ -386,11 +398,11 @@ $administration = $user->administration;
      *
      * @return \Illuminate\Http\Response
      */
-    public function export()
-    {
-        return Excel::download(new \App\Exports\InscriptionsExport, 'inscriptions-' . now()->format('Y-m-d') . '.xlsx');
-    }
-
+   /**  public function export()
+   * {
+   *     return Excel::download(new \App\Exports\InscriptionsExport, 'inscriptions-' . now()->format('Y-m-d') . '.xlsx');
+   * }
+*/
     /**
      * Afficher le formulaire de modification d'une inscription
      *

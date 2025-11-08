@@ -20,6 +20,12 @@ return new class extends Migration
             $table->decimal('montant', 10, 2); // 10 chiffres au total, 2 après la virgule
             $table->string('reference_transaction')->unique();
 
+            // Mois à payer
+            $table->enum('mois_a_payer', [
+                'janvier', 'fevrier', 'mars', 'avril', 'mai', 'juin',
+                'juillet', 'aout', 'septembre', 'octobre', 'novembre', 'decembre'
+            ]);
+
             // Enums pour les choix prédéfinis
             $table->enum('mode_paiement', ['espece', 'virement', 'wave', 'orange_money']);
             $table->enum('statut', ['en_attente', 'valide', 'rejete', 'annule'])->default('en_attente');

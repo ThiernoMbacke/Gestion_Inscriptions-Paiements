@@ -10,6 +10,7 @@ use Illuminate\Support\Str;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Exception;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 
 class PaiementOrangeController extends Controller
 {
@@ -281,54 +282,122 @@ class PaiementOrangeController extends Controller
     /**
      * Vérifier le statut d'un paiement
      */
-    public function checkStatus(Request $request, $paiementId)
+
+public function checkStatus(Request $request, $paiementId)
     {
         try {
-            $paiement = Paiement::findOrFail($paiementId);
-
-            // Vérifier que l'utilisateur est propriétaire
             $user = Auth::user();
-            if ($paiement->etudiant_id !== $user->etudiant->id) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Accès non autorisé'
-                ], 403);
+            $paiement = null;
+
+            // 🔹 Cas 1 : recherche par ID
+            if (is_numeric($paiementId)) {
+                $paiement = Paiement::findOrFail($paiementId);
+
+                // Vérifier que l'utilisateur est propriétaire
+                if ($user->etudiant && $paiement->etudiant_id !== $user->etudiant->id) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Accès non autorisé'
+                    ], 403);
+                }
+            }
+            // 🔹 Cas 2 : recherche par statut (ex: en_attente, valide)
+            else {
+                $paiement = Paiement::where('statut', $paiementId)->first();
+
+                if (!$paiement) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => "Aucun paiement trouvé avec le statut {$paiementId}"
+                    ], 404);
+                }
             }
 
+            $wasUpdated = false;
+            $externalStatus = null;
+
+            // Vérifier le statut externe si nécessaire
             if ($paiement->transaction_id_externe) {
-                $result = $this->orangeMoneyService->checkPaymentStatus($paiement->transaction_id_externe);
+                $result = $this->checkExternalPaymentStatus($paiement);
 
                 if ($result['success']) {
-                    // Mettre à jour le statut si nécessaire
-                    $newStatus = $this->mapOrangeStatusToLocal($result['status']);
+                    $externalStatus = $result['status'];
+                    $newStatus = $this->mapExternalStatusToLocal($result['status'], $paiement->mode_paiement);
 
-                    if ($newStatus !== $paiement->statut) {
+                    $oldStatus = $paiement->statut;
+
+                    if ($newStatus !== $oldStatus) {
                         $paiement->update(['statut' => $newStatus]);
+                        $wasUpdated = true;
+                        $paiement->refresh();
                     }
 
                     return response()->json([
                         'success' => true,
-                        'status' => $paiement->statut,
-                        'orange_status' => $result['status'],
-                        'message' => 'Statut mis à jour'
+                        'data' => [
+                            'id' => $paiement->id,
+                            'status' => $paiement->statut,
+                            'external_status' => $externalStatus,
+                            'updated' => $wasUpdated,
+                            'previous_status' => $wasUpdated ? $oldStatus : null,
+                            'transaction_id' => $paiement->transaction_id_externe,
+                            'mode_paiement' => $paiement->mode_paiement,
+                            'montant' => $paiement->montant,
+                            'date_paiement' => $paiement->date_paiement
+                        ],
+                        'message' => $wasUpdated
+                            ? 'Statut vérifié et mis à jour'
+                            : 'Statut vérifié, aucune mise à jour nécessaire'
                     ]);
+                } else {
+                    return response()->json([
+                        'success' => false,
+                        'data' => [
+                            'id' => $paiement->id,
+                            'status' => $paiement->statut,
+                            'external_error' => $result['message'] ?? 'Erreur inconnue'
+                        ],
+                        'message' => 'Impossible de vérifier le statut externe'
+                    ], 502);
                 }
             }
 
+            // 🔹 Pas de transaction externe : retourner le statut actuel
             return response()->json([
                 'success' => true,
-                'status' => $paiement->statut,
-                'message' => 'Statut actuel'
+                'data' => [
+                    'id' => $paiement->id,
+                    'status' => $paiement->statut,
+                    'updated' => false,
+                    'mode_paiement' => $paiement->mode_paiement,
+                    'montant' => $paiement->montant,
+                    'date_paiement' => $paiement->date_paiement,
+                    'has_external_transaction' => false
+                ],
+                'message' => 'Statut actuel récupéré'
             ]);
 
-        } catch (Exception $e) {
+        } catch (ModelNotFoundException $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Erreur lors de la vérification',
-                'error' => $e->getMessage()
+                'message' => 'Paiement non trouvé'
+            ], 404);
+
+        } catch (Exception $e) {
+            Log::error('Erreur lors de la vérification du statut du paiement : ' . $e->getMessage(), [
+                'paiement_id' => $paiementId,
+                'user_id' => Auth::id(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreur lors de la vérification du statut',
+                'error_code' => 'CHECK_STATUS_ERROR'
             ], 500);
         }
     }
+
 
     /**
      * Mapper les statuts Orange Money vers les statuts locaux

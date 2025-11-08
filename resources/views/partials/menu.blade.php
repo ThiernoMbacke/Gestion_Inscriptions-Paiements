@@ -2,14 +2,15 @@
     $role = strtolower(Auth::user()->role ?? '');
 @endphp
 
-<p>Role actuel: {{ $role }}</p>
-
-@if ($role === 'etudiant')
-    @include('partials.sidebar-etudiant')
+@if ($role === 'admin')
+    @include('partials.sidebar-admin')
 @elseif ($role === 'comptable')
     @include('partials.sidebar-comptable')
-@elseif ($role === 'admin')  
-    @include('partials.sidebar-admin')
+@elseif ($role === 'etudiant')
+    @include('partials.sidebar-etudiant')
 @else
-    <p class="text-danger">Aucun menu disponible pour ce rôle: {{ $role }}</p>
+    <div class="p-4 text-red-500">
+        <i class="fas fa-exclamation-triangle mr-2"></i>
+        Aucun menu disponible pour ce rôle: {{ $role }}
+    </div>
 @endif

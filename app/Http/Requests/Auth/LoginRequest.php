@@ -29,6 +29,7 @@ class LoginRequest extends FormRequest
         return [
             'email' => ['required', 'string', 'email'],
             'password' => ['required', 'string'],
+            'role' => ['required', 'string', 'in:etudiant,admin,comptable'],
         ];
     }
 
@@ -41,11 +42,26 @@ class LoginRequest extends FormRequest
     {
         $this->ensureIsNotRateLimited();
 
-        if (! Auth::attempt($this->only('email', 'password'), $this->boolean('remember'))) {
+        $credentials = [
+            'email' => $this->email,
+            'password' => $this->password,
+            'role' => $this->role
+        ];
+
+        if (! Auth::attempt($credentials, $this->boolean('remember'))) {
             RateLimiter::hit($this->throttleKey());
 
             throw ValidationException::withMessages([
-                'email' => trans('auth.failed'),
+                'email' => __('auth.failed'),
+            ]);
+        }
+
+        // Vérifier que le rôle de l'utilisateur correspond au rôle sélectionné
+        $user = Auth::user();
+        if ($user->role !== $this->role) {
+            Auth::logout();
+            throw ValidationException::withMessages([
+                'email' => 'Les identifiants ne correspondent pas au profil sélectionné.',
             ]);
         }
 

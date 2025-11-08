@@ -25,7 +25,7 @@ class LoginController extends Controller
      *
      * @var string
      */
-    protected $redirectTo = '/home';
+    protected $redirectTo = '/admin-test';  // Route test temporaire
 
     /**
      * Create a new controller instance.

@@ -12,7 +12,7 @@ return new class extends Migration
             $table->id();
 
             // Liaison avec users
-            $table->unsignedBigInteger('user_id')->unique()->after('id');
+            $table->unsignedBigInteger('user_id')->unique();
 
             // Informations de base
             $table->string('nom', 100);

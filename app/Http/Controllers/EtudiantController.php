@@ -5,7 +5,7 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use App\Traits\GenerateApiResponse;
-use App\Models\Etudiant;
+use Illuminate\Support\Facades\Storage;
 use App\Models\Classe;
 use Exception;
 use Illuminate\Support\Facades\Hash;
@@ -132,13 +132,13 @@ class EtudiantController extends Controller
     }
 
 
-    public function editProfil()
-    {
-        $user = Auth::user(); // étudiant connecté
-        return view('etudiant.profil.edit', compact('user'));
-    }
+   public function editProfil()
+{
+    $user = Auth::user(); // étudiant connecté
+    return view('etudiant.profil.edit', compact('user'));
+}
 
-    public function updateProfil(Request $request)
+public function updateProfil(Request $request)
 {
     /** @var \App\Models\User $user */
     $user = Auth::user();
@@ -147,8 +147,16 @@ class EtudiantController extends Controller
         'name' => 'required|string|max:255',
         'email' => 'required|email|unique:users,email,' . $user->id,
         'password' => 'nullable|confirmed|min:6',
+        'nom' => 'nullable|string|max:100',
+        'prenom' => 'nullable|string|max:100',
+        'nom_d_utilisateur' => 'nullable|string|max:50|unique:personnes,nom_d_utilisateur,' . ($user->personne->id ?? ''),
+        'telephone' => 'nullable|string|max:20',
+        'date_de_naissance' => 'nullable|date|before:today',
+        'adresse' => 'nullable|string|max:255',
+        'photo' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
     ]);
 
+    // Mise à jour du user
     $user->name = $request->name;
     $user->email = $request->email;
 
@@ -156,7 +164,32 @@ class EtudiantController extends Controller
         $user->password = Hash::make($request->password);
     }
 
-    $user->save(); // Plus de soulignement rouge
+    $user->save();
+
+    // Mise à jour de la personne (si elle existe)
+    if ($user->personne) {
+        $personneData = [
+            'nom' => $request->nom ?? $user->personne->nom,
+            'prenom' => $request->prenom ?? $user->personne->prenom,
+            'nom_d_utilisateur' => $request->nom_d_utilisateur ?? $user->personne->nom_d_utilisateur,
+            'telephone' => $request->telephone,
+            'date_de_naissance' => $request->date_de_naissance,
+            'adresse' => $request->adresse,
+        ];
+
+        // Gestion de la photo
+        if ($request->hasFile('photo')) {
+            // Supprimer l'ancienne photo si elle existe
+            if ($user->personne->photo && Storage::disk('public')->exists($user->personne->photo)) {
+                Storage::disk('public')->delete($user->personne->photo);
+            }
+
+            // Stocker la nouvelle photo
+            $personneData['photo'] = $request->file('photo')->store('photos', 'public');
+        }
+
+        $user->personne->update($personneData);
+    }
 
     return redirect()->route('etudiant.profil.edit')->with('success', 'Profil mis à jour avec succès !');
 }

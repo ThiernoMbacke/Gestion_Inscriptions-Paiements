@@ -33,30 +33,6 @@
             display: inline-block;
             width: 150px;
         }
-        .payment-notice {
-            background-color: #fff3cd;
-            border: 1px solid #ffeeba;
-            padding: 15px;
-            margin: 20px 0;
-            border-radius: 5px;
-        }
-        .payment-notice h3 {
-            color: #856404;
-            margin-top: 0;
-        }
-        .payment-notice p {
-            color: #856404;
-            margin-bottom: 10px;
-        }
-        .payment-button {
-            display: inline-block;
-            background-color: #007bff;
-            color: white;
-            padding: 10px 20px;
-            text-decoration: none;
-            border-radius: 5px;
-            font-weight: bold;
-        }
     </style>
 </head>
 <body>
@@ -82,17 +58,6 @@
         <div class="info-row">
             <span class="label">Date d'inscription :</span>
             <span>{{ $dateInscription }}</span>
-        </div>
-
-        <div class="payment-notice">
-            <h3>💳 Prochaine étape : Paiement des frais</h3>
-            <p>
-                <strong>N'oubliez pas de procéder au paiement de vos frais d'inscription en ligne.</strong><br>
-                Connectez-vous à votre espace étudiant pour effectuer le paiement de manière sécurisée.
-            </p>
-            <a href="{{ $paiementUrl ?? '#' }}" class="payment-button">
-                🔗 Accéder à l'espace paiement
-            </a>
         </div>
 
         <p>Votre parcours scolaire peut maintenant commencer. Nous vous souhaitons une excellente année académique !</p>

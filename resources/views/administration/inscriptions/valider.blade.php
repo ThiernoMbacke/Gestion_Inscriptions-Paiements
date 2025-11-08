@@ -35,7 +35,7 @@
         <th>Statut actuel</th>
         <td>
             @switch($inscription->statut)
-                @case('valide')
+                @case('validee')
                     <span class="badge badge-success">
                         <i class="fas fa-check-circle"></i> Validée
                     </span>

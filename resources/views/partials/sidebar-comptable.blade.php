@@ -1,39 +1,35 @@
-<div class="w-64 bg-blue-900 border-r fixed h-full flex flex-col">
-    <!-- Logo -->
-    
+<nav class="flex-1 overflow-y-auto py-4">
+    <div class="space-y-1">
+        <!-- Dashboard -->
+        <a href="{{ route('comptable.dashboard') }}"
+           class="menu-item {{ request()->routeIs('comptable.dashboard') ? 'active' : '' }}">
+            <i class="fas fa-tachometer-alt w-5 mr-3"></i>
+            <span>Dashboard</span>
+        </a>
 
-    <!-- Menu -->
-    <nav class="flex-1 overflow-y-auto menu mt-4 pb-20">
-        <div class="space-y-1">
-            <!-- Dashboard -->
-            <a href="{{ route('comptable.dashboard') }}"
-               class="{{ request()->routeIs('comptable.dashboard') ? 'border-green-500 bg-green-50 text-green-700' : 'border-transparent text-white' }} flex items-center px-4 py-3 border-l-4 hover:bg-red-600 hover:text-white transition-colors">
-                <i class="fas fa-tachometer-alt w-5 h-5 mr-3"></i>
-                Dashboard
-            </a>
+        <!-- Paiements en Attente -->
+        <a href="{{ route('comptable.paiements.index') }}"
+           class="menu-item {{ request()->routeIs('comptable.paiements*') ? 'active' : '' }}">
+            <i class="fas fa-credit-card w-5 mr-3"></i>
+            <span>Paiements en Attente</span>
+        </a>
 
-            <!-- Paiements en Attente -->
-            <a href="{{ route('comptable.paiements.index') }}"
-               class="{{ request()->routeIs('comptable.paiements*') ? 'border-green-500 bg-green-50 text-green-700' : 'border-transparent text-white' }} flex items-center px-4 py-3 border-l-4 hover:bg-red-600 hover:text-white transition-colors">
-                <i class="fas fa-credit-card w-5 h-5 mr-3"></i>
-                Paiements en Attente
-            </a>
+        <!-- Historique -->
+        <a href="{{ route('comptable.historique.index') }}"
+           class="menu-item {{ request()->routeIs('comptable.historique*') ? 'active' : '' }}">
+            <i class="fas fa-history w-5 mr-3"></i>
+            <span>Historique</span>
+        </a>
+    </div>
+</nav>
 
-            <!-- Historique -->
-            <a href="{{ route('comptable.historique.index') }}"
-               class="{{ request()->routeIs('comptable.historique*') ? 'border-green-500 bg-green-50 text-green-700' : 'border-transparent text-white' }} flex items-center px-4 py-3 border-l-4 hover:bg-red-600 hover:text-white transition-colors">
-                <i class="fas fa-history w-5 h-5 mr-3"></i>
-                Historique
-            </a>
-        </div>
-    </nav>
-
-    <!-- Footer -->
-    <div class="mt-auto p-4 border-t border-white/10 flex items-center text-white">
-        <i class="fas fa-calculator text-2xl mr-3"></i>
-        <div>
-            <p class="font-medium m-0">{{ Auth::user()->prenom }} {{ Auth::user()->nom }}</p>
-            <p class="text-sm opacity-80 m-0">Comptable</p>
+<!-- Footer User Info -->
+<div class="sidebar-footer">
+    <div class="flex items-center">
+        <i class="fas fa-calculator text-3xl mr-3 text-white"></i>
+        <div class="sidebar-user-info">
+            <p class="text-sm font-medium text-white">{{ Auth::user()->prenom }} {{ Auth::user()->nom }}</p>
+            <p class="text-xs text-gray-300">Comptable</p>
         </div>
     </div>
 </div>

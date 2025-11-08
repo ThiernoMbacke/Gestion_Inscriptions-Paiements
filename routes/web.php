@@ -15,6 +15,7 @@ use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Http\Request;
 
+
 // Routes pour l'administration (backend)
 Route::middleware(['auth', 'verified', 'role:admin'])->prefix('admin')->name('admin.')->group(function () {
     // Gestion des inscriptions
@@ -114,6 +115,16 @@ Route::prefix('paiement')->name('paiement.')->group(function() {
     Route::post('/{paiement}/email', [PaiementController::class, 'sendEmail'])->name('email');
     Route::post('/{paiement}/{action}', [PaiementController::class, 'validerRejeter'])->name('validerRejeter');
 });
+/**
+* Détails et reçus (pluriel)
+*Route::prefix('paiements')->name('paiements.')->group(function () {
+    *Route::get('/{paiement}/details', [PaiementController::class, 'details'])->name('details');
+   * Route::get('/{paiement}/recu', [PaiementController::class, 'recu'])->name('recu');
+  *  Route::post('/{paiement}/email', [PaiementController::class, 'sendEmail'])->name('email');
+ *   Route::post('/{paiement}/{action}', [PaiementController::class, 'validerRejeter'])->name('validerRejeter');
+*});
+*/
+
 
 // Routes pour l'espace étudiant
 Route::middleware(['auth', 'verified', 'role:etudiant'])->prefix('etudiant')->name('etudiant.')->group(function () {
@@ -139,8 +150,9 @@ Route::middleware(['auth', 'verified', 'role:etudiant'])->prefix('etudiant')->na
     Route::patch('/profil', [EtudiantController::class, 'updateProfil'])->name('profil.update');
 
     // Vérification du statut de paiement
-    Route::get('/paiements/{paiement}/status', [PaiementOrangeController::class, 'checkStatus'])
-         ->name('paiements.check.status');
+    Route::get('/paiements/{paiementId}/status', [PaiementOrangeController::class, 'checkStatus'])
+     ->name('paiements.check.status');
+
 });
 
 // Routes pour l'espace comptable
@@ -148,12 +160,12 @@ Route::middleware(['auth', 'verified', 'role:comptable'])->prefix('comptable')->
     // Tableau de bord
     Route::get('/dashboard', [ComptableController::class, 'dashboard'])->name('dashboard');
 
-    // Gestion des paiements
-    Route::resource('paiements', PaiementController::class)->except(['create', 'edit']);
-
-    // Paiements en attente
+    // Paiements en attente - AVANT le resource !
     Route::get('/paiements/en-attente', [ComptableController::class, 'paiements'])
          ->name('paiements.en_attente');
+
+    // Gestion des paiements
+    Route::resource('paiements', PaiementController::class)->except(['create', 'edit']);
 
     // Historique des paiements
     Route::get('/historique', [PaiementController::class, 'historique'])
@@ -266,3 +278,43 @@ Route::prefix('administration/utilisateurs')->name('administration.utilisateurs.
 // Routes d'authentification
 Route::post('/login', [UserController::class, 'login'])->name('login');
 Route::post('/logout', [UserController::class, 'logout'])->name('logout');
+
+// Routes pour le comptable
+Route::prefix('comptable')->name('comptable.')->group(function () {
+
+    // Route pour les paiements en attente
+    //Route::get('/paiements/en-attente', [ComptableController::class, 'paiementsEnAttente'])
+     //   ->name('paiements.en_attente');
+
+    // Route pour l'historique des paiements
+    Route::get('/paiements/historique', [ComptableController::class, 'historiquePaiements'])
+        ->name('paiements.historique');
+       // nouvelles routes pour nouveau type de tri
+    Route::get('/rapports/export-etudiants-pdf', [ComptableController::class, 'exportEtudiantsPDF'])->name('rapports.export-etudiants-pdf');
+
+
+    // ✅ AJOUTER LA ROUTE POUR LE REÇU
+    Route::get('/paiements/{paiement}/recu', [PaiementController::class, 'recu'])
+        ->name('paiements.recu');
+
+    // Route pour les rapports
+    //Route::get('/rapports', [ComptableController::class, 'rapports'])
+      //  ->name('rapports.index');
+
+    // ✅ CORRIGER LA ROUTE API
+    Route::post('/api/paiements/{paiement}/valider', [ComptableController::class, 'validerPaiement'])
+        ->name('api.paiements.valider');
+});
+
+// Dans routes/web.php
+Route::prefix('administration')->name('administration.')->group(function () {
+    Route::resource('etudiants', EtudiantController::class);
+    // Ou spécifiquement :
+    Route::get('etudiants/{etudiant}', [EtudiantController::class, 'show'])
+         ->name('etudiants.show');
+});
+
+// paiement page dans le mail de validation inscription
+//Route::get('/paiement', [PaiementController::class, 'page'])->name('paiement.page');
+//Route::get('/comptable/rapports', [ComptableController::class, 'rapports'])
+//    ->name('comptable.rapports.index');

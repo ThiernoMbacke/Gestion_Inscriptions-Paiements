@@ -5,6 +5,19 @@
 
     RewriteEngine On
 
+    # ------------------------------------------------------------------
+    # REDIRECTION HTTP -> HTTPS (La nouvelle règle cruciale)
+    # ------------------------------------------------------------------
+    # If we receive a forwarded http request from a proxy...
+    RewriteCond %{HTTP:X-Forwarded-Proto} =http [OR]
+    # ...or just a plain old http request directly
+    RewriteCond %{HTTP:X-Forwarded-Proto} =""
+    RewriteCond %{HTTPS} !=on
+    RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+
+    # ------------------------------------------------------------------
+    # Vos règles existantes (conservées intactes)
+    # ------------------------------------------------------------------
     # Handle Authorization Header
     RewriteCond %{HTTP:Authorization} .
     RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]

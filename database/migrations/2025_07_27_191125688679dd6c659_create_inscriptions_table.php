@@ -20,6 +20,10 @@ return new class extends Migration
             $table->string('annee_academique');
             $table->date('date_inscription');
 
+            // Colonne statut
+            $table->enum('statut', ['en_attente', 'validee', 'rejetee', 'annulee'])
+                  ->default('en_attente');
+
             // Ajout du champ pour le suivi de l'email de confirmation
             $table->boolean('confirmation_envoyee')->default(false);
 
