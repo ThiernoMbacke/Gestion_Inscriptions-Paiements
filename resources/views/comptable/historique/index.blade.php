@@ -3,264 +3,396 @@
 @section('title', 'Historique des Paiements')
 
 @section('content')
-<div class="page-header">
-    <h1>Historique des Paiements</h1>
-    <div class="breadcrumb">
-        <a href="{{ route('comptable.dashboard') }}">Tableau de bord</a> &raquo; Historique
-    </div>
-</div>
-
-<!-- Statistiques de l'historique -->
-<div class="dashboard-cards">
-    <div class="card">
-        <div class="card-icon" style="background-color: var(--secondary);">
-            <i class="fas fa-check-circle"></i>
-        </div>
-        <div class="card-content">
-            <h3>Paiements validés</h3>
-            <p class="stat-number">{{ $paiements->where('statut', 'validé')->count() }}</p>
-            <small>Total confirmés</small>
+<div class="container mx-auto px-4 py-6">
+    <!-- Header -->
+    <div class="mb-6">
+        <h1 class="text-2xl md:text-3xl font-bold text-gray-800">Historique des Paiements</h1>
+        <div class="text-sm md:text-base text-gray-600 mt-2">
+            <a href="{{ route('comptable.dashboard') }}" class="text-blue-600 hover:text-blue-800">Tableau de bord</a>
+            <span class="mx-2">›</span>
+            <span>Historique</span>
         </div>
     </div>
 
-    <div class="card">
-        <div class="card-icon" style="background-color: var(--primary);">
-            <i class="fas fa-money-bill-wave"></i>
-        </div>
-        <div class="card-content">
-            <h3>Revenus totaux</h3>
-            <p class="stat-number">{{ number_format($paiements->where('statut', 'validé')->sum('montant'), 0, ',', ' ') }} FCFA</p>
-            <small>Montant encaissé</small>
-        </div>
-    </div>
-
-    <div class="card">
-        <div class="card-icon" style="background-color: var(--warning);">
-            <i class="fas fa-calendar-month"></i>
-        </div>
-        <div class="card-content">
-            <h3>Ce mois</h3>
-            <p class="stat-number">{{ $paiements->where('created_at', '>=', now()->startOfMonth())->count() }}</p>
-            <small>Paiements traités</small>
-        </div>
-    </div>
-
-    <div class="card">
-        <div class="card-icon" style="background-color: var(--danger);">
-            <i class="fas fa-times-circle"></i>
-        </div>
-        <div class="card-content">
-            <h3>Rejetés</h3>
-            <p class="stat-number">{{ $paiements->where('statut', 'rejeté')->count() }}</p>
-            <small>Paiements refusés</small>
-        </div>
-    </div>
-</div>
-
-<!-- Filtres et recherche -->
-<div class="filters-section">
-    <div class="filters-header">
-        <h3>Filtres et recherche</h3>
-        <button type="button" class="btn btn-outline" onclick="resetFilters()">
-            <i class="fas fa-undo"></i> Réinitialiser
-        </button>
-    </div>
-
-    <div class="filters-grid">
-        <div class="filter-group">
-            <label>Période</label>
-            <select onchange="filterByPeriod(this.value)" id="periodFilter">
-                <option value="">Toutes les périodes</option>
-                <option value="today">Aujourd'hui</option>
-                <option value="week">Cette semaine</option>
-                <option value="month">Ce mois</option>
-                <option value="quarter">Ce trimestre</option>
-                <option value="year">Cette année</option>
-            </select>
-        </div>
-
-        <div class="filter-group">
-            <label>Statut</label>
-            <select onchange="filterByStatus(this.value)" id="statusFilter">
-                <option value="">Tous les statuts</option>
-                <option value="valide">Validés</option>
-                <option value="rejete">Rejetés</option>
-                <option value="en_attente">En attente</option>
-            </select>
-        </div>
-
-        <div class="filter-group">
-            <label>Mode de paiement</label>
-            <select onchange="filterByMode(this.value)" id="modeFilter">
-                <option value="">Tous les modes</option>
-                <option value="carte_bancaire">Carte bancaire</option>
-                <option value="mobile_money">Mobile Money</option>
-                <option value="virement">Virement</option>
-                <option value="especes">Espèces</option>
-            </select>
-        </div>
-
-        <div class="filter-group">
-            <label>Recherche</label>
-            <input type="text" placeholder="Nom étudiant, référence..." onkeyup="searchPayments(this.value)" id="searchInput">
-        </div>
-    </div>
-</div>
-
-<div class="history-section">
-    <div class="section-header">
-        <h3><i class="fas fa-history"></i> Historique Complet</h3>
-        <div class="export-controls">
-     <a href="{{ route('comptable.historique.export.excel') }}" class="btn btn-success">
-        <i class="fas fa-file-excel"></i> Export Excel
-     </a>
-     <a href="" class="btn btn-info">
-        <i class="fas fa-file-pdf"></i> Export PDF
-     </a>
-    </div>
-
-</div>
-
-    @if($paiements && $paiements->count() > 0)
-        <div class="table-container">
-            <table class="table" id="paymentsTable">
-                <thead>
-                    <tr>
-                        <th onclick="sortTable(0)">Date <i class="fas fa-sort"></i></th>
-                        <th onclick="sortTable(1)">Étudiant <i class="fas fa-sort"></i></th>
-                        <th onclick="sortTable(2)">Classe <i class="fas fa-sort"></i></th>
-                        <th onclick="sortTable(3)">Montant <i class="fas fa-sort"></i></th>
-                        <th onclick="sortTable(4)">Mode <i class="fas fa-sort"></i></th>
-                        <th onclick="sortTable(5)">Référence <i class="fas fa-sort"></i></th>
-                        <th onclick="sortTable(6)">Statut <i class="fas fa-sort"></i></th>
-                        <th>Validé par</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach($paiements as $paiement)
-                        <tr data-status="{{ $paiement->statut }}"
-                            data-mode="{{ $paiement->mode_paiement }}"
-                            data-date="{{ $paiement->created_at->format('Y-m-d') }}"
-                            data-search="{{ strtolower($paiement->etudiant->personne->nom ?? '') }} {{ strtolower($paiement->etudiant->personne->prenom ?? '') }} {{ strtolower($paiement->reference_transaction) }}">
-                            <td>
-                                <div class="date-info">
-                                    <strong>{{ $paiement->created_at->format('d/m/Y') }}</strong>
-                                    <small>{{ $paiement->created_at->format('H:i') }}</small>
-                                </div>
-                            </td>
-                            <td>
-                                <div class="student-info">
-                                    <strong>{{ $paiement->inscription->etudiant->personne->nom ?? 'N/A' }} {{ $paiement->inscription->etudiant->personne->prenom ?? '' }}</strong>
-                                    <small>{{ $paiement->inscription->etudiant->matricule ?? 'N/A' }}</small>
-                                </div>
-                            </td>
-                            <td>{{ $paiement->inscription->classe->libelle ?? 'N/A' }}</td>
-                            <td>
-                                <span class="amount-cell">{{ number_format($paiement->montant, 0, ',', ' ') }} FCFA</span>
-                            </td>
-                            <td>
-                                <span class="mode-badge">
-                                    @switch($paiement->mode_paiement)
-                                        @case('carte_bancaire')
-                                            💳 Carte
-                                            @break
-                                        @case('mobile_money')
-                                            📱 Mobile
-                                            @break
-                                        @case('virement')
-                                            🏦 Virement
-                                            @break
-                                        @case('especes')
-                                            💵 Espèces
-                                            @break
-                                        @default
-                                            {{ ucfirst(str_replace('_', ' ', $paiement->mode_paiement)) }}
-                                    @endswitch
-                                </span>
-                            </td>
-                            <td>
-                                <code class="reference-code">{{ $paiement->reference_transaction }}</code>
-                            </td>
-                            <td>
-                                @switch($paiement->statut)
-                                    @case('valide')
-                                        <span class="status-badge status-success">
-                                            <i class="fas fa-check-circle"></i> Validé
-                                        </span>
-                                        @break
-                                    @case('rejete')
-                                        <span class="status-badge status-danger">
-                                            <i class="fas fa-times-circle"></i> Rejeté
-                                        </span>
-                                        @break
-                                    @case('en_attente')
-                                        <span class="status-badge status-warning">
-                                            <i class="fas fa-clock"></i> En attente
-                                        </span>
-                                        @break
-                                    @default
-                                        <span class="status-badge status-neutral">
-                                            {{ ucfirst($paiement->statut) }}
-                                        </span>
-                                @endswitch
-                            </td>
-                            <td>
-                                @if($paiement->comptable)
-                                    <div class="validator-info">
-                                        <strong>{{ $paiement->comptable->personne->nom ?? 'N/A' }}</strong>
-                                        <small>{{ $paiement->updated_at->format('d/m/Y H:i') }}</small>
-                                    </div>
-                                @else
-                                    <span class="text-muted">-</span>
-                                @endif
-                            </td>
-                            <td>
-                                <div class="action-buttons">
-                                    <button type="button" class="btn-small btn-info" onclick="viewDetails({{ $paiement->id }})" title="Détails">
-                                        <i class="fas fa-eye"></i>
-                                    </button>
-                                    <button type="button" class="btn-small btn-primary" onclick="printReceipt({{ $paiement->id }})" title="Reçu">
-                                        <i class="fas fa-print"></i>
-                                    </button>
-                                    @if($paiement->statut === 'valide')
-                                        <button type="button" class="btn-small btn-warning" onclick="sendEmail({{ $paiement->id }})" title="Envoyer email">
-                                            <i class="fas fa-envelope"></i>
-                                        </button>
-                                    @endif
-                                </div>
-                            </td>
-                        </tr>
-                    @endforeach
-                </tbody>
-            </table>
-        </div>
-
-        <!-- Pagination -->
-        <div class="pagination-info">
-            <p>Affichage de {{ $paiements->count() }} paiement(s) sur un total de {{ $paiements->count() }}</p>
-        </div>
-    @else
-        <div class="empty-state">
-            <div class="empty-icon">
-                <i class="fas fa-history"></i>
+    <!-- Statistiques -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <!-- Validés -->
+        <div class="bg-white rounded-xl shadow-md overflow-hidden">
+            <div class="p-6">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm font-medium text-gray-600 mb-1">Paiements validés</p>
+                        <p class="text-3xl font-bold text-green-600">{{ $paiements->where('statut', 'validé')->count() }}</p>
+                        <small class="text-gray-500">Total confirmés</small>
+                    </div>
+                    <div class="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center">
+                        <i class="fas fa-check-circle text-3xl text-green-600"></i>
+                    </div>
+                </div>
             </div>
-            <h4>Aucun paiement dans l'historique</h4>
-            <p>L'historique des paiements apparaîtra ici une fois que des paiements auront été traités.</p>
         </div>
-    @endif
+
+        <!-- Revenus -->
+        <div class="bg-white rounded-xl shadow-md overflow-hidden">
+            <div class="p-6">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm font-medium text-gray-600 mb-1">Revenus totaux</p>
+                        <p class="text-xl font-bold text-blue-600">{{ number_format($paiements->where('statut', 'validé')->sum('montant'), 0, ',', ' ') }}</p>
+                        <small class="text-gray-500">FCFA encaissés</small>
+                    </div>
+                    <div class="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center">
+                        <i class="fas fa-money-bill-wave text-3xl text-blue-600"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Ce mois -->
+        <div class="bg-white rounded-xl shadow-md overflow-hidden">
+            <div class="p-6">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm font-medium text-gray-600 mb-1">Ce mois</p>
+                        <p class="text-3xl font-bold text-yellow-600">{{ $paiements->where('created_at', '>=', now()->startOfMonth())->count() }}</p>
+                        <small class="text-gray-500">Paiements traités</small>
+                    </div>
+                    <div class="w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center">
+                        <i class="fas fa-calendar-month text-3xl text-yellow-600"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Rejetés -->
+        <div class="bg-white rounded-xl shadow-md overflow-hidden">
+            <div class="p-6">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm font-medium text-gray-600 mb-1">Rejetés</p>
+                        <p class="text-3xl font-bold text-red-600">{{ $paiements->where('statut', 'rejeté')->count() }}</p>
+                        <small class="text-gray-500">Paiements refusés</small>
+                    </div>
+                    <div class="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center">
+                        <i class="fas fa-times-circle text-3xl text-red-600"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filtres -->
+    <div class="bg-white rounded-xl shadow-md overflow-hidden mb-6">
+        <div class="bg-gradient-to-r from-purple-500 to-purple-600 px-6 py-4">
+            <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                <h3 class="text-white text-lg font-semibold flex items-center">
+                    <i class="fas fa-filter mr-2"></i>
+                    Filtres et recherche
+                </h3>
+                <button type="button"
+                        onclick="resetFilters()"
+                        class="px-4 py-2 bg-white/20 hover:bg-white/30 text-white rounded-lg transition-colors text-sm font-medium">
+                    <i class="fas fa-undo mr-1"></i> Réinitialiser
+                </button>
+            </div>
+        </div>
+
+        <div class="p-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <!-- Période -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Période</label>
+                    <select onchange="filterByPeriod(this.value)"
+                            id="periodFilter"
+                            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent">
+                        <option value="">Toutes les périodes</option>
+                        <option value="today">Aujourd'hui</option>
+                        <option value="week">Cette semaine</option>
+                        <option value="month">Ce mois</option>
+                        <option value="quarter">Ce trimestre</option>
+                        <option value="year">Cette année</option>
+                    </select>
+                </div>
+
+                <!-- Statut -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Statut</label>
+                    <select onchange="filterByStatus(this.value)"
+                            id="statusFilter"
+                            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent">
+                        <option value="">Tous les statuts</option>
+                        <option value="valide">Validés</option>
+                        <option value="rejete">Rejetés</option>
+                        <option value="en_attente">En attente</option>
+                    </select>
+                </div>
+
+                <!-- Mode -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Mode de paiement</label>
+                    <select onchange="filterByMode(this.value)"
+                            id="modeFilter"
+                            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent">
+                        <option value="">Tous les modes</option>
+                        <option value="carte_bancaire">Carte bancaire</option>
+                        <option value="mobile_money">Mobile Money</option>
+                        <option value="orange_money">Orange Money</option>
+                        <option value="virement">Virement</option>
+                        <option value="especes">Espèces</option>
+                    </select>
+                </div>
+
+                <!-- Recherche -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Recherche</label>
+                    <input type="text"
+                           placeholder="Nom, référence..."
+                           onkeyup="searchPayments(this.value)"
+                           id="searchInput"
+                           class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Historique -->
+    <div class="bg-white rounded-xl shadow-md overflow-hidden">
+        <div class="bg-gradient-to-r from-blue-500 to-blue-600 px-6 py-4">
+            <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                <h3 class="text-white text-lg font-semibold flex items-center">
+                    <i class="fas fa-history mr-2"></i>
+                    Historique Complet
+                </h3>
+                <div class="flex flex-wrap gap-2">
+                    <a href="{{ route('comptable.historique.export.excel') }}"
+                       class="px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg transition-colors text-sm font-medium">
+                        <i class="fas fa-file-excel mr-1"></i> Excel
+                    </a>
+                    <a href=""
+                       class="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors text-sm font-medium">
+                        <i class="fas fa-file-pdf mr-1"></i> PDF
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="p-6">
+            @if($paiements && $paiements->count() > 0)
+                <!-- Version Desktop -->
+                <div class="hidden lg:block overflow-x-auto">
+                    <table class="w-full" id="paymentsTable">
+                        <thead class="bg-gray-50 border-b-2 border-gray-200">
+                            <tr>
+                                <th onclick="sortTable(0)" class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase cursor-pointer hover:bg-gray-100">
+                                    Date <i class="fas fa-sort ml-1 opacity-50"></i>
+                                </th>
+                                <th onclick="sortTable(1)" class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase cursor-pointer hover:bg-gray-100">
+                                    Étudiant <i class="fas fa-sort ml-1 opacity-50"></i>
+                                </th>
+                                <th onclick="sortTable(2)" class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase cursor-pointer hover:bg-gray-100">
+                                    Classe <i class="fas fa-sort ml-1 opacity-50"></i>
+                                </th>
+                                <th onclick="sortTable(3)" class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase cursor-pointer hover:bg-gray-100">
+                                    Montant <i class="fas fa-sort ml-1 opacity-50"></i>
+                                </th>
+                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Mode</th>
+                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Référence</th>
+                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Statut</th>
+                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Validé par</th>
+                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-200">
+                            @foreach($paiements as $paiement)
+                            <tr data-status="{{ $paiement->statut }}"
+                                data-mode="{{ $paiement->mode_paiement }}"
+                                data-date="{{ $paiement->created_at->format('Y-m-d') }}"
+                                data-search="{{ strtolower($paiement->inscription->etudiant->personne->nom ?? '') }} {{ strtolower($paiement->inscription->etudiant->personne->prenom ?? '') }} {{ strtolower($paiement->reference_transaction) }}"
+                                class="hover:bg-gray-50 transition-colors">
+                                <td class="px-4 py-3">
+                                    <div class="flex flex-col">
+                                        <span class="font-semibold text-gray-900">{{ $paiement->created_at->format('d/m/Y') }}</span>
+                                        <span class="text-xs text-gray-500">{{ $paiement->created_at->format('H:i') }}</span>
+                                    </div>
+                                </td>
+                                <td class="px-4 py-3">
+                                    <div class="flex flex-col">
+                                        <span class="font-semibold text-gray-900">
+                                            {{ $paiement->inscription->etudiant->personne->nom ?? 'N/A' }}
+                                            {{ $paiement->inscription->etudiant->personne->prenom ?? '' }}
+                                        </span>
+                                        <span class="text-xs text-gray-500">{{ $paiement->inscription->etudiant->matricule ?? 'N/A' }}</span>
+                                    </div>
+                                </td>
+                                <td class="px-4 py-3 text-sm text-gray-700">
+                                    {{ $paiement->inscription->classe->libelle ?? 'N/A' }}
+                                </td>
+                                <td class="px-4 py-3">
+                                    <span class="font-bold text-green-600">{{ number_format($paiement->montant, 0, ',', ' ') }}</span>
+                                    <span class="text-xs text-gray-500">FCFA</span>
+                                </td>
+                                <td class="px-4 py-3">
+                                    <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                                        @switch($paiement->mode_paiement)
+                                            @case('carte_bancaire') 💳 Carte @break
+                                            @case('mobile_money') 📱 Mobile @break
+                                            @case('orange_money') 🟠 Orange @break
+                                            @case('virement') 🏦 Virement @break
+                                            @case('especes') 💵 Espèces @break
+                                            @default {{ ucfirst(str_replace('_', ' ', $paiement->mode_paiement)) }}
+                                        @endswitch
+                                    </span>
+                                </td>
+                                <td class="px-4 py-3">
+                                    <code class="bg-gray-100 px-2 py-1 rounded text-xs font-mono">{{ $paiement->reference_transaction }}</code>
+                                </td>
+                                <td class="px-4 py-3">
+                                    @switch($paiement->statut)
+                                        @case('valide')
+                                            <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-800">
+                                                <i class="fas fa-check-circle mr-1"></i> Validé
+                                            </span>
+                                            @break
+                                        @case('rejete')
+                                            <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-800">
+                                                <i class="fas fa-times-circle mr-1"></i> Rejeté
+                                            </span>
+                                            @break
+                                        @case('en_attente')
+                                            <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-yellow-100 text-yellow-800">
+                                                <i class="fas fa-clock mr-1"></i> En attente
+                                            </span>
+                                            @break
+                                    @endswitch
+                                </td>
+                                <td class="px-4 py-3">
+                                    @if($paiement->comptable)
+                                        <div class="flex flex-col">
+                                            <span class="text-sm font-medium text-gray-900">{{ $paiement->comptable->personne->nom ?? 'N/A' }}</span>
+                                            <span class="text-xs text-gray-500">{{ $paiement->updated_at->format('d/m/Y H:i') }}</span>
+                                        </div>
+                                    @else
+                                        <span class="text-gray-400 italic">-</span>
+                                    @endif
+                                </td>
+                                <td class="px-4 py-3">
+                                    <div class="flex items-center gap-2">
+                                        <button type="button"
+                                                onclick="viewDetails({{ $paiement->id }})"
+                                                class="p-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors"
+                                                title="Détails">
+                                            <i class="fas fa-eye"></i>
+                                        </button>
+                                        <button type="button"
+                                                onclick="printReceipt({{ $paiement->id }})"
+                                                class="p-2 bg-purple-500 hover:bg-purple-600 text-white rounded-lg transition-colors"
+                                                title="Reçu">
+                                            <i class="fas fa-print"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Version Mobile -->
+                <div class="lg:hidden space-y-4">
+                    @foreach($paiements as $paiement)
+                    <div class="bg-gray-50 rounded-lg p-4 border border-gray-200"
+                         data-status="{{ $paiement->statut }}"
+                         data-mode="{{ $paiement->mode_paiement }}"
+                         data-date="{{ $paiement->created_at->format('Y-m-d') }}"
+                         data-search="{{ strtolower($paiement->inscription->etudiant->personne->nom ?? '') }} {{ strtolower($paiement->inscription->etudiant->personne->prenom ?? '') }} {{ strtolower($paiement->reference_transaction) }}">
+                        <div class="flex justify-between items-start mb-3">
+                            <div class="flex-1">
+                                <h4 class="font-semibold text-gray-900">
+                                    {{ $paiement->inscription->etudiant->personne->nom ?? 'N/A' }}
+                                    {{ $paiement->inscription->etudiant->personne->prenom ?? '' }}
+                                </h4>
+                                <p class="text-sm text-gray-600">{{ $paiement->inscription->etudiant->matricule ?? 'N/A' }}</p>
+                            </div>
+                            @switch($paiement->statut)
+                                @case('valide')
+                                    <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-800">
+                                        <i class="fas fa-check-circle mr-1"></i> Validé
+                                    </span>
+                                    @break
+                                @case('rejete')
+                                    <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-800">
+                                        <i class="fas fa-times-circle mr-1"></i> Rejeté
+                                    </span>
+                                    @break
+                            @endswitch
+                        </div>
+
+                        <div class="space-y-2 mb-3 text-sm">
+                            <div class="flex justify-between">
+                                <span class="text-gray-600">Classe:</span>
+                                <span class="font-medium">{{ $paiement->inscription->classe->libelle ?? 'N/A' }}</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-gray-600">Montant:</span>
+                                <span class="font-bold text-green-600">{{ number_format($paiement->montant, 0, ',', ' ') }} FCFA</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-gray-600">Date:</span>
+                                <span>{{ $paiement->created_at->format('d/m/Y H:i') }}</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-gray-600">Référence:</span>
+                                <code class="text-xs bg-gray-200 px-2 py-1 rounded">{{ $paiement->reference_transaction }}</code>
+                            </div>
+                        </div>
+
+                        <div class="flex gap-2">
+                            <button onclick="viewDetails({{ $paiement->id }})"
+                                    class="flex-1 px-3 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg text-sm font-medium">
+                                <i class="fas fa-eye mr-1"></i> Détails
+                            </button>
+                            <button onclick="printReceipt({{ $paiement->id }})"
+                                    class="px-3 py-2 bg-purple-500 hover:bg-purple-600 text-white rounded-lg text-sm">
+                                <i class="fas fa-print"></i>
+                            </button>
+                        </div>
+                    </div>
+                    @endforeach
+                </div>
+
+                <!-- Pagination Info -->
+                <div class="mt-6 text-center text-sm text-gray-600 bg-gray-50 rounded-lg py-3">
+                    Affichage de {{ $paiements->count() }} paiement(s)
+                </div>
+            @else
+                <div class="text-center py-12">
+                    <div class="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <i class="fas fa-history text-6xl text-gray-300"></i>
+                    </div>
+                    <h4 class="text-xl font-semibold text-gray-700 mb-2">Aucun paiement dans l'historique</h4>
+                    <p class="text-gray-600">L'historique des paiements apparaîtra ici une fois que des paiements auront été traités.</p>
+                </div>
+            @endif
+        </div>
+    </div>
 </div>
 
-<!-- Modal de détails du paiement -->
-<div id="detailsModal" class="modal">
-    <div class="modal-content">
-        <div class="modal-header">
-            <h3><i class="fas fa-eye"></i> Détails du Paiement</h3>
-            <span class="close" onclick="closeModal()">&times;</span>
+<!-- Modal -->
+<div id="detailsModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+        <div class="bg-gradient-to-r from-blue-500 to-blue-600 px-6 py-4 flex justify-between items-center sticky top-0">
+            <h3 class="text-white text-xl font-semibold flex items-center">
+                <i class="fas fa-eye mr-2"></i>
+                Détails du Paiement
+            </h3>
+            <button onclick="closeModal()" class="text-white hover:text-gray-200 text-2xl">
+                <i class="fas fa-times"></i>
+            </button>
         </div>
-        <div class="modal-body" id="modalBody">
-            <div class="loading-spinner">
-                <i class="fas fa-spinner fa-spin"></i> Chargement...
+        <div id="modalBody" class="p-6">
+            <div class="text-center py-12">
+                <i class="fas fa-spinner fa-spin text-blue-500 text-4xl mb-3"></i>
+                <p class="text-gray-600">Chargement...</p>
             </div>
         </div>
     </div>
@@ -270,7 +402,7 @@
 let sortDirection = {};
 
 function filterByPeriod(period) {
-    const rows = document.querySelectorAll('tbody tr[data-date]');
+    const rows = document.querySelectorAll('[data-date]');
     const today = new Date();
 
     rows.forEach(row => {
@@ -305,39 +437,24 @@ function filterByPeriod(period) {
 }
 
 function filterByStatus(status) {
-    const rows = document.querySelectorAll('tbody tr[data-status]');
-
+    const rows = document.querySelectorAll('[data-status]');
     rows.forEach(row => {
-        if (status === '' || row.dataset.status === status) {
-            row.style.display = '';
-        } else {
-            row.style.display = 'none';
-        }
+        row.style.display = (status === '' || row.dataset.status === status) ? '' : 'none';
     });
 }
 
 function filterByMode(mode) {
-    const rows = document.querySelectorAll('tbody tr[data-mode]');
-
+    const rows = document.querySelectorAll('[data-mode]');
     rows.forEach(row => {
-        if (mode === '' || row.dataset.mode === mode) {
-            row.style.display = '';
-        } else {
-            row.style.display = 'none';
-        }
+        row.style.display = (mode === '' || row.dataset.mode === mode) ? '' : 'none';
     });
 }
 
 function searchPayments(query) {
-    const rows = document.querySelectorAll('tbody tr[data-search]');
+    const rows = document.querySelectorAll('[data-search]');
     const searchTerm = query.toLowerCase();
-
     rows.forEach(row => {
-        if (searchTerm === '' || row.dataset.search.includes(searchTerm)) {
-            row.style.display = '';
-        } else {
-            row.style.display = 'none';
-        }
+        row.style.display = (searchTerm === '' || row.dataset.search.includes(searchTerm)) ? '' : 'none';
     });
 }
 
@@ -346,9 +463,7 @@ function resetFilters() {
     document.getElementById('statusFilter').value = '';
     document.getElementById('modeFilter').value = '';
     document.getElementById('searchInput').value = '';
-
-    const rows = document.querySelectorAll('tbody tr');
-    rows.forEach(row => row.style.display = '');
+    document.querySelectorAll('tbody tr, [data-status]').forEach(row => row.style.display = '');
 }
 
 function sortTable(columnIndex) {
@@ -359,618 +474,67 @@ function sortTable(columnIndex) {
     rows.sort((a, b) => {
         const aValue = a.cells[columnIndex].textContent.trim();
         const bValue = b.cells[columnIndex].textContent.trim();
-
-        if (isAscending) {
-            return aValue.localeCompare(bValue);
-        } else {
-            return bValue.localeCompare(aValue);
-        }
+        return isAscending ? aValue.localeCompare(bValue) : bValue.localeCompare(aValue);
     });
 
     const tbody = table.querySelector('tbody');
     rows.forEach(row => tbody.appendChild(row));
-
     sortDirection[columnIndex] = isAscending ? 'asc' : 'desc';
 }
 
 function viewDetails(id) {
-    // Ouvrir la modal
-    document.getElementById('detailsModal').style.display = 'block';
-    
-    // Afficher le spinner de chargement
-    document.getElementById('modalBody').innerHTML = `
-        <div class="loading-spinner">
-            <i class="fas fa-spinner fa-spin"></i> Chargement des détails...
-        </div>
-    `;
-    
-    // Récupérer les détails via AJAX
+    document.getElementById('detailsModal').classList.remove('hidden');
     fetch(`/comptable/paiements/${id}/details`)
         .then(response => response.json())
         .then(data => {
-            if (data.success) {
-                displayPaiementDetails(data.paiement);
-            } else {
-                document.getElementById('modalBody').innerHTML = `
-                    <div class="error-message">
-                        <i class="fas fa-exclamation-triangle"></i>
-                        Erreur lors du chargement des détails
-                    </div>
-                `;
-            }
-        })
-        .catch(error => {
-            console.error('Erreur:', error);
-            document.getElementById('modalBody').innerHTML = `
-                <div class="error-message">
-                    <i class="fas fa-exclamation-triangle"></i>
-                    Erreur de connexion
-                </div>
-            `;
+            if (data.success) displayPaiementDetails(data.paiement);
         });
 }
 
+function closeModal() {
+    document.getElementById('detailsModal').classList.add('hidden');
+}
+
 function displayPaiementDetails(paiement) {
-    const modalBody = document.getElementById('modalBody');
-    
-    modalBody.innerHTML = `
-        <div class="details-container">
-            <!-- Informations générales -->
-            <div class="detail-section">
-                <h4><i class="fas fa-info-circle"></i> Informations Générales</h4>
-                <div class="detail-grid">
-                    <div class="detail-item">
-                        <label>Référence:</label>
-                        <span class="reference-code">${paiement.reference_transaction}</span>
+    document.getElementById('modalBody').innerHTML = `
+        <div class="space-y-6">
+            <div class="bg-blue-50 rounded-lg p-6">
+                <h4 class="text-lg font-semibold mb-4 flex items-center">
+                    <i class="fas fa-money-bill-wave text-blue-500 mr-2"></i>
+                    Informations Paiement
+                </h4>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <p class="text-sm text-gray-600">Montant</p>
+                        <p class="font-bold text-green-600 text-2xl">${new Intl.NumberFormat('fr-FR').format(paiement.montant)} FCFA</p>
                     </div>
-                    <div class="detail-item">
-                        <label>Date de paiement:</label>
-                        <span>${new Date(paiement.date_paiement).toLocaleDateString('fr-FR')}</span>
-                    </div>
-                    <div class="detail-item">
-                        <label>Montant:</label>
-                        <span class="amount-highlight">${new Intl.NumberFormat('fr-FR').format(paiement.montant)} FCFA</span>
-                    </div>
-                    <div class="detail-item">
-                        <label>Mode de paiement:</label>
-                        <span class="mode-badge">${formatModePayment(paiement.mode_paiement)}</span>
-                    </div>
-                    <div class="detail-item">
-                        <label>Statut:</label>
-                        <span class="status-badge ${getStatusClass(paiement.statut)}">
-                            ${getStatusIcon(paiement.statut)} ${formatStatus(paiement.statut)}
-                        </span>
+                    <div>
+                        <p class="text-sm text-gray-600">Référence</p>
+                        <code class="bg-gray-200 px-2 py-1 rounded text-sm">${paiement.reference_transaction}</code>
                     </div>
                 </div>
             </div>
-
-            <!-- Informations étudiant -->
-            <div class="detail-section">
-                <h4><i class="fas fa-user-graduate"></i> Informations Étudiant</h4>
-                <div class="detail-grid">
-                    <div class="detail-item">
-                        <label>Nom complet:</label>
-                        <span>${paiement.inscription?.etudiant?.personne?.nom || 'N/A'} ${paiement.inscription?.etudiant?.personne?.prenom || ''}</span>
-                    </div>
-                    <div class="detail-item">
-                        <label>Matricule:</label>
-                        <span>${paiement.inscription?.etudiant?.matricule || 'N/A'}</span>
-                    </div>
-                    <div class="detail-item">
-                        <label>Email:</label>
-                        <span>${paiement.inscription?.etudiant?.personne?.user?.email || 'N/A'}</span>
-                    </div>
-                    <div class="detail-item">
-                        <label>Téléphone:</label>
-                        <span>${paiement.inscription?.etudiant?.personne?.telephone || 'N/A'}</span>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Informations inscription -->
-            <div class="detail-section">
-                <h4><i class="fas fa-graduation-cap"></i> Informations Inscription</h4>
-                <div class="detail-grid">
-                    <div class="detail-item">
-                        <label>Classe:</label>
-                        <span>${paiement.inscription?.classe?.libelle || 'N/A'}</span>
-                    </div>
-                    <div class="detail-item">
-                        <label>Année académique:</label>
-                        <span>${paiement.inscription?.annee_academique || 'N/A'}</span>
-                    </div>
-                    <div class="detail-item">
-                        <label>Date d'inscription:</label>
-                        <span>${paiement.inscription?.date_inscription ? new Date(paiement.inscription.date_inscription).toLocaleDateString('fr-FR') : 'N/A'}</span>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Informations validation -->
-            ${paiement.comptable ? `
-            <div class="detail-section">
-                <h4><i class="fas fa-user-check"></i> Informations Validation</h4>
-                <div class="detail-grid">
-                    <div class="detail-item">
-                        <label>Validé par:</label>
-                        <span>${paiement.comptable?.personne?.nom || 'N/A'} ${paiement.comptable?.personne?.prenom || ''}</span>
-                    </div>
-                    <div class="detail-item">
-                        <label>Date de validation:</label>
-                        <span>${new Date(paiement.updated_at).toLocaleDateString('fr-FR')} à ${new Date(paiement.updated_at).toLocaleTimeString('fr-FR')}</span>
-                    </div>
-                </div>
-            </div>
-            ` : ''}
-
-            <!-- Actions -->
-            <div class="detail-actions">
-                <button type="button" class="btn btn-primary" onclick="printReceipt(${paiement.id})">
-                    <i class="fas fa-print"></i> Imprimer le reçu
+            <div class="flex gap-3 justify-end">
+                <button onclick="printReceipt(${paiement.id})" class="px-6 py-2 bg-purple-500 hover:bg-purple-600 text-white rounded-lg">
+                    <i class="fas fa-print mr-2"></i> Imprimer
                 </button>
-                ${paiement.statut === 'validé' ? `
-                <button type="button" class="btn btn-warning" onclick="sendEmail(${paiement.id})">
-                    <i class="fas fa-envelope"></i> Envoyer par email
-                </button>
-                ` : ''}
-                <button type="button" class="btn btn-secondary" onclick="closeModal()">
-                    <i class="fas fa-times"></i> Fermer
+                <button onclick="closeModal()" class="px-6 py-2 bg-gray-500 hover:bg-gray-600 text-white rounded-lg">
+                    Fermer
                 </button>
             </div>
         </div>
     `;
 }
 
-function closeModal() {
-    document.getElementById('detailsModal').style.display = 'none';
+function printReceipt(id) {
+    window.open(`/paiements/${id}/recu`, '_blank');
 }
 
-function formatModePayment(mode) {
-    const modes = {
-        'carte_bancaire': '💳 Carte bancaire',
-        'mobile_money': '📱 Mobile Money',
-        'orange_money': '🟠 Orange Money',
-        'virement': '🏦 Virement',
-        'especes': '💵 Espèces'
-    };
-    return modes[mode] || mode.replace('_', ' ');
-}
-
-function formatStatus(status) {
-    const statuses = {
-        'valide': 'Validé',
-        'validé': 'Validé',
-        'rejete': 'Rejeté',
-        'rejeté': 'Rejeté',
-        'en_attente': 'En attente'
-    };
-    return statuses[status] || status;
-}
-
-function getStatusClass(status) {
-    const classes = {
-        'valide': 'status-success',
-        'validé': 'status-success',
-        'rejete': 'status-danger',
-        'rejeté': 'status-danger',
-        'en_attente': 'status-warning'
-    };
-    return classes[status] || 'status-neutral';
-}
-
-function getStatusIcon(status) {
-    const icons = {
-        'valide': '<i class="fas fa-check-circle"></i>',
-        'validé': '<i class="fas fa-check-circle"></i>',
-        'rejete': '<i class="fas fa-times-circle"></i>',
-        'rejeté': '<i class="fas fa-times-circle"></i>',
-        'en_attente': '<i class="fas fa-clock"></i>'
-    };
-    return icons[status] || '<i class="fas fa-question-circle"></i>';
-}
-
-// Fermer la modal en cliquant à l'extérieur
 window.onclick = function(event) {
     const modal = document.getElementById('detailsModal');
     if (event.target === modal) {
-        modal.style.display = 'none';
+        closeModal();
     }
 }
-
-function printReceipt(id) {
-    const url = `/paiements/${id}/recu`;
-    const win = window.open(url, '_blank');
-    win.focus();
-}
-
 </script>
-
-<style>
-.filters-section {
-    background: white;
-    padding: 2rem;
-    border-radius: 8px;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
-    margin: 2rem 0;
-}
-
-.filters-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 1.5rem;
-}
-
-.filters-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-    gap: 1.5rem;
-}
-
-.filter-group {
-    display: flex;
-    flex-direction: column;
-}
-
-.filter-group label {
-    font-weight: 600;
-    margin-bottom: 0.5rem;
-    color: var(--dark);
-}
-
-.filter-group select,
-.filter-group input {
-    padding: 0.75rem;
-    border: 2px solid #e0e0e0;
-    border-radius: 6px;
-    font-size: 1rem;
-    transition: border-color 0.3s;
-}
-
-.filter-group select:focus,
-.filter-group input:focus {
-    outline: none;
-    border-color: var(--primary);
-}
-
-.history-section {
-    background: white;
-    border-radius: 8px;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
-    overflow: hidden;
-}
-
-.section-header {
-    background: linear-gradient(135deg, var(--primary), var(--primary-dark));
-    color: white;
-    padding: 1.5rem 2rem;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-.export-controls {
-    display: flex;
-    gap: 1rem;
-}
-
-.table th {
-    cursor: pointer;
-    user-select: none;
-    position: relative;
-}
-
-.table th:hover {
-    background-color: #e8f4f8;
-}
-
-.table th i {
-    margin-left: 0.5rem;
-    opacity: 0.5;
-}
-
-.date-info, .student-info {
-    display: flex;
-    flex-direction: column;
-}
-
-.date-info small, .student-info small {
-    color: var(--gray);
-    font-size: 0.8rem;
-}
-
-.validator-info {
-    display: flex;
-    flex-direction: column;
-}
-
-.validator-info small {
-    color: var(--gray);
-    font-size: 0.75rem;
-}
-
-.mode-badge {
-    background: var(--light);
-    padding: 0.3rem 0.8rem;
-    border-radius: 15px;
-    font-size: 0.85rem;
-    color: var(--dark);
-}
-
-.reference-code {
-    background: var(--light);
-    padding: 0.3rem 0.6rem;
-    border-radius: 4px;
-    font-family: 'Courier New', monospace;
-    font-size: 0.8rem;
-    color: var(--dark);
-}
-
-.amount-cell {
-    font-weight: 600;
-    color: var(--secondary);
-    font-size: 1.05rem;
-}
-
-.pagination-info {
-    padding: 1rem 2rem;
-    background: #f8f9fa;
-    border-top: 1px solid #e0e0e0;
-    text-align: center;
-    color: var(--gray);
-}
-
-.text-muted {
-    color: var(--gray);
-    font-style: italic;
-}
-
-/* Responsive */
-@media (max-width: 768px) {
-    .filters-grid {
-        grid-template-columns: 1fr;
-    }
-
-    .section-header {
-        flex-direction: column;
-        gap: 1rem;
-        text-align: center;
-    }
-
-    .export-controls {
-        flex-wrap: wrap;
-        justify-content: center;
-    }
-
-    .table {
-        font-size: 0.85rem;
-    }
-
-    .table th,
-    .table td {
-        padding: 0.5rem;
-    }
-}
-
-/* Modal Styles */
-.modal {
-    display: none;
-    position: fixed;
-    z-index: 1000;
-    left: 0;
-    top: 0;
-    width: 100%;
-    height: 100%;
-    background-color: rgba(0, 0, 0, 0.5);
-    backdrop-filter: blur(3px);
-}
-
-.modal-content {
-    background-color: white;
-    margin: 2% auto;
-    padding: 0;
-    border-radius: 12px;
-    width: 90%;
-    max-width: 800px;
-    max-height: 90vh;
-    overflow-y: auto;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
-    animation: modalSlideIn 0.3s ease-out;
-}
-
-@keyframes modalSlideIn {
-    from {
-        opacity: 0;
-        transform: translateY(-50px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
-.modal-header {
-    background: linear-gradient(135deg, var(--primary), var(--primary-dark));
-    color: white;
-    padding: 1.5rem 2rem;
-    border-radius: 12px 12px 0 0;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-.modal-header h3 {
-    margin: 0;
-    font-size: 1.3rem;
-}
-
-.close {
-    color: white;
-    font-size: 2rem;
-    font-weight: bold;
-    cursor: pointer;
-    transition: opacity 0.3s;
-    line-height: 1;
-}
-
-.close:hover {
-    opacity: 0.7;
-}
-
-.modal-body {
-    padding: 2rem;
-}
-
-.loading-spinner {
-    text-align: center;
-    padding: 3rem;
-    color: var(--primary);
-    font-size: 1.1rem;
-}
-
-.loading-spinner i {
-    font-size: 2rem;
-    margin-bottom: 1rem;
-    display: block;
-}
-
-.error-message {
-    text-align: center;
-    padding: 2rem;
-    color: var(--danger);
-    font-size: 1.1rem;
-}
-
-.error-message i {
-    font-size: 2rem;
-    margin-bottom: 1rem;
-    display: block;
-}
-
-.details-container {
-    display: flex;
-    flex-direction: column;
-    gap: 2rem;
-}
-
-.detail-section {
-    background: #f8f9fa;
-    border-radius: 8px;
-    padding: 1.5rem;
-    border-left: 4px solid var(--primary);
-}
-
-.detail-section h4 {
-    margin: 0 0 1rem 0;
-    color: var(--dark);
-    font-size: 1.1rem;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-}
-
-.detail-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-    gap: 1rem;
-}
-
-.detail-item {
-    display: flex;
-    flex-direction: column;
-    gap: 0.3rem;
-}
-
-.detail-item label {
-    font-weight: 600;
-    color: var(--gray);
-    font-size: 0.9rem;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-}
-
-.detail-item span {
-    font-size: 1rem;
-    color: var(--dark);
-}
-
-.amount-highlight {
-    font-size: 1.2rem !important;
-    font-weight: bold !important;
-    color: var(--secondary) !important;
-}
-
-.detail-actions {
-    display: flex;
-    gap: 1rem;
-    justify-content: center;
-    padding-top: 1rem;
-    border-top: 1px solid #e0e0e0;
-    margin-top: 1rem;
-}
-
-.detail-actions .btn {
-    padding: 0.75rem 1.5rem;
-    border: none;
-    border-radius: 6px;
-    cursor: pointer;
-    font-weight: 600;
-    text-decoration: none;
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    transition: all 0.3s;
-}
-
-.detail-actions .btn-primary {
-    background: var(--primary);
-    color: white;
-}
-
-.detail-actions .btn-warning {
-    background: var(--warning);
-    color: white;
-}
-
-.detail-actions .btn-secondary {
-    background: var(--gray);
-    color: white;
-}
-
-.detail-actions .btn:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-}
-
-/* Responsive modal */
-@media (max-width: 768px) {
-    .modal-content {
-        width: 95%;
-        margin: 5% auto;
-        max-height: 85vh;
-    }
-    
-    .modal-header {
-        padding: 1rem 1.5rem;
-    }
-    
-    .modal-body {
-        padding: 1.5rem;
-    }
-    
-    .detail-grid {
-        grid-template-columns: 1fr;
-    }
-    
-    .detail-actions {
-        flex-direction: column;
-    }
-    
-    .detail-actions .btn {
-        width: 100%;
-        justify-content: center;
-    }
-}
-</style>
-
 @endsection
